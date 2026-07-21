@@ -1,0 +1,288 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Pledge Campaign Dashboard</title>
+<style>
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    background: #f8fafc;
+    color: #0f172a;
+    margin: 0;
+    padding: 2rem 1rem;
+  }
+  main {
+    max-width: 720px;
+    margin: 0 auto;
+  }
+  #login-view {
+    max-width: 360px;
+    margin: 4rem auto;
+  }
+  h1 {
+    font-size: 1.5rem;
+  }
+  p.subtitle {
+    color: #475569;
+  }
+  label {
+    display: block;
+    font-size: 0.875rem;
+    font-weight: 600;
+    margin-top: 1rem;
+  }
+  input {
+    width: 100%;
+    box-sizing: border-box;
+    margin-top: 0.25rem;
+    padding: 0.6rem 0.75rem;
+    border: 1px solid #cbd5e1;
+    border-radius: 6px;
+    font-size: 1rem;
+  }
+  button {
+    margin-top: 1.5rem;
+    padding: 0.6rem 1rem;
+    background: #0f172a;
+    color: #fff;
+    border: none;
+    border-radius: 6px;
+    font-size: 0.95rem;
+    font-weight: 600;
+    cursor: pointer;
+  }
+  button:disabled {
+    opacity: 0.5;
+    cursor: default;
+  }
+  #login-message {
+    margin-top: 1rem;
+    padding: 0.75rem 1rem;
+    border-radius: 6px;
+    font-size: 0.9rem;
+  }
+  #login-message.success {
+    background: #f0fdf4;
+    color: #166534;
+  }
+  #login-message.error {
+    background: #fef2f2;
+    color: #b91c1c;
+  }
+  .stats {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 1rem;
+    margin-top: 1.5rem;
+  }
+  .stat-card {
+    background: #fff;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    padding: 1rem;
+  }
+  .stat-card .label {
+    font-size: 0.85rem;
+    color: #64748b;
+  }
+  .stat-card .value {
+    font-size: 1.5rem;
+    font-weight: 700;
+    margin-top: 0.25rem;
+  }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 1rem;
+    background: #fff;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    overflow: hidden;
+  }
+  th, td {
+    text-align: left;
+    padding: 0.6rem 0.9rem;
+    font-size: 0.9rem;
+    border-bottom: 1px solid #f1f5f9;
+  }
+  th {
+    color: #64748b;
+    font-weight: 600;
+  }
+  #signout-btn {
+    background: transparent;
+    color: #475569;
+    border: 1px solid #cbd5e1;
+    float: right;
+  }
+  [hidden] {
+    display: none !important;
+  }
+</style>
+</head>
+<body>
+  <div id="login-view">
+    <h1>Admin Login</h1>
+    <p class="subtitle">Enter your email to receive a sign-in link.</p>
+    <form id="login-form">
+      <input id="login-email" type="email" placeholder="you@example.com" required />
+      <button id="login-btn" type="submit">Send sign-in link</button>
+    </form>
+    <div id="login-message" hidden></div>
+  </div>
+
+  <main id="dashboard-view" hidden>
+    <button id="signout-btn">Sign out</button>
+    <h1>Pledge Campaign Dashboard</h1>
+
+    <div class="stats">
+      <div class="stat-card">
+        <div class="label">Pledges</div>
+        <div class="value" id="stat-count">–</div>
+      </div>
+      <div class="stat-card">
+        <div class="label">Individual Total</div>
+        <div class="value" id="stat-individual">–</div>
+      </div>
+      <div class="stat-card">
+        <div class="label">Total With Church Match</div>
+        <div class="value" id="stat-match">–</div>
+      </div>
+    </div>
+
+    <h2>Pledges by Person</h2>
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Email</th>
+          <th>Phone</th>
+          <th>Pledged</th>
+          <th>Date</th>
+        </tr>
+      </thead>
+      <tbody id="pledges-body"></tbody>
+    </table>
+    <p id="empty-state" hidden>
+      No pledges to show yet. If you expect data here, confirm your email
+      has been added to <code>admin_allowlist</code>.
+    </p>
+  </main>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+  <script>
+    // Fill in from Supabase Project Settings > API. The anon key is safe to
+    // expose publicly — it only grants what Row Level Security allows.
+    var SUPABASE_URL = "https://ptxloxbolbnwfnwurnpi.supabase.co";
+    var SUPABASE_ANON_KEY = "REPLACE_WITH_ANON_KEY";
+
+    // Must exactly match wherever this page is published in GHL/AI Studio,
+    // and must be added to Supabase Auth > URL Configuration > Redirect URLs.
+    var SITE_URL = "REPLACE_WITH_YOUR_GHL_PAGE_URL";
+
+    var supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+      auth: { detectSessionInUrl: true },
+    });
+
+    var loginView = document.getElementById("login-view");
+    var dashboardView = document.getElementById("dashboard-view");
+    var loginForm = document.getElementById("login-form");
+    var loginBtn = document.getElementById("login-btn");
+    var loginMessage = document.getElementById("login-message");
+    var signoutBtn = document.getElementById("signout-btn");
+
+    function formatCurrency(value) {
+      return new Intl.NumberFormat("en-US", {
+        style: "currency",
+        currency: "USD",
+      }).format(value || 0);
+    }
+
+    async function loadDashboard() {
+      loginView.hidden = true;
+      dashboardView.hidden = false;
+
+      var pledgesResult = await supabaseClient
+        .from("pledges")
+        .select("full_name, email, phone, amount, created_at")
+        .order("created_at", { ascending: false });
+
+      var summaryResult = await supabaseClient
+        .from("pledge_summary")
+        .select("*")
+        .single();
+
+      var summary = summaryResult.data || {};
+      document.getElementById("stat-count").textContent = summary.pledge_count || 0;
+      document.getElementById("stat-individual").textContent = formatCurrency(summary.individual_total);
+      document.getElementById("stat-match").textContent = formatCurrency(summary.total_with_match);
+
+      var pledges = pledgesResult.data || [];
+      var tbody = document.getElementById("pledges-body");
+      var emptyState = document.getElementById("empty-state");
+      tbody.innerHTML = "";
+
+      if (pledges.length === 0) {
+        emptyState.hidden = false;
+      } else {
+        emptyState.hidden = true;
+        pledges.forEach(function (pledge) {
+          var row = document.createElement("tr");
+          row.innerHTML =
+            "<td>" + pledge.full_name + "</td>" +
+            "<td>" + pledge.email + "</td>" +
+            "<td>" + pledge.phone + "</td>" +
+            "<td>" + formatCurrency(Number(pledge.amount)) + "</td>" +
+            "<td>" + new Date(pledge.created_at).toLocaleDateString() + "</td>";
+          tbody.appendChild(row);
+        });
+      }
+    }
+
+    loginForm.addEventListener("submit", async function (event) {
+      event.preventDefault();
+      loginBtn.disabled = true;
+      loginBtn.textContent = "Sending…";
+      loginMessage.hidden = true;
+
+      var email = document.getElementById("login-email").value.trim();
+      var result = await supabaseClient.auth.signInWithOtp({
+        email: email,
+        options: { emailRedirectTo: SITE_URL },
+      });
+
+      loginBtn.disabled = false;
+      loginBtn.textContent = "Send sign-in link";
+
+      if (result.error) {
+        loginMessage.hidden = false;
+        loginMessage.className = "error";
+        loginMessage.textContent = "Something went wrong. Try again.";
+      } else {
+        loginMessage.hidden = false;
+        loginMessage.className = "success";
+        loginMessage.textContent = "Check your email for a sign-in link.";
+      }
+    });
+
+    signoutBtn.addEventListener("click", async function () {
+      await supabaseClient.auth.signOut();
+      dashboardView.hidden = true;
+      loginView.hidden = false;
+    });
+
+    supabaseClient.auth.onAuthStateChange(function (event, session) {
+      if (session) {
+        loadDashboard();
+      }
+    });
+
+    supabaseClient.auth.getSession().then(function (result) {
+      if (result.data.session) {
+        loadDashboard();
+      }
+    });
+  </script>
+</body>
+</html>

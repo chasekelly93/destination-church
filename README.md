@@ -1,15 +1,42 @@
 # Destination Church Pledge Campaign
 
-Next.js app with two surfaces:
+Two ways to run the same pledge campaign, both against the same Supabase
+backend:
 
-- `/` — public pledge form (name, email, phone, address, amount). One-time
+- **`ghl/`** — self-contained static HTML files (no build step, no server)
+  meant to be pasted directly into GHL AI Studio's custom HTML block, so
+  GHL hosts them. This is the active plan.
+- **`app/`** — a Next.js version of the same two pages, useful for local
+  development/testing or if you ever want to host outside GHL. Not
+  currently deployed anywhere.
+
+Both surfaces:
+
+- Public pledge form (name, email, phone, address, amount). One-time
   only: `email` is unique and the database has no update/delete policy on
   `pledges`, so a submitted pledge can't be changed or duplicated.
-- `/admin` → `/admin/dashboard` — passwordless admin login (Supabase magic
-  link) showing per-person pledges, the individual total, and the total
-  including the church's matching pledge (2x individual total).
+- Passwordless admin login (Supabase magic link) showing per-person
+  pledges, the individual total, and the total including the church's
+  matching pledge (2x individual total).
 
-## Setup
+## Hosting in GHL AI Studio (the plan)
+
+1. Get the anon key: Supabase → `destination-church` project → Project
+   Settings → API → "anon public" key.
+2. In `ghl/admin-dashboard.html`, replace `REPLACE_WITH_ANON_KEY`. Leave
+   `SITE_URL` as-is for now — paste the file into an AI Studio custom
+   HTML block and publish it once to get its live URL.
+3. Edit `ghl/admin-dashboard.html` again, set `SITE_URL` to that live
+   URL, and re-paste/republish.
+4. In Supabase: Authentication → URL Configuration → Redirect URLs → add
+   that same URL. Magic-link sign-in will fail silently if this step is
+   skipped.
+5. In `ghl/pledge-form.html`, replace `REPLACE_WITH_ANON_KEY`, then paste
+   into another AI Studio custom HTML block and publish.
+6. Run the migration below if you haven't, add yourself to
+   `admin_allowlist`, and test both pages using their real GHL URLs.
+
+## Local Next.js setup (optional)
 
 1. Copy `.env.example` to `.env.local` and fill in
    `NEXT_PUBLIC_SUPABASE_ANON_KEY` from Project Settings > API in the
