@@ -34,6 +34,7 @@ $$;
 
 -- Public pledge form can insert. No update/delete policy exists for anyone,
 -- which makes pledges immutable once submitted (one-time by design).
+drop policy if exists "public can submit a pledge" on public.pledges;
 create policy "public can submit a pledge"
   on public.pledges
   for insert
@@ -41,6 +42,7 @@ create policy "public can submit a pledge"
   with check (true);
 
 -- Only allowlisted, authenticated admins can read pledge data.
+drop policy if exists "admins can view pledges" on public.pledges;
 create policy "admins can view pledges"
   on public.pledges
   for select
