@@ -21,6 +21,11 @@ const loginSchema = z.object({
 });
 type LoginValues = z.infer<typeof loginSchema>;
 
+const devLoginSchema = z.object({
+  password: z.string().min(1, "Enter the dev password"),
+});
+type DevLoginValues = z.infer<typeof devLoginSchema>;
+
 const addAdminSchema = z.object({
   email: z.string().email("Enter a valid email"),
 });
@@ -54,12 +59,20 @@ const Admin = () => {
   const [pledges, setPledges] = useState<Pledge[]>([]);
   const [summary, setSummary] = useState<Summary | null>(null);
   const [admins, setAdmins] = useState<string[]>([]);
+  const [showDevLogin, setShowDevLogin] = useState(false);
+  const [devAuthorized, setDevAuthorized] = useState(false);
 
   const {
     register,
     handleSubmit,
     formState: { errors, isSubmitting },
   } = useForm<LoginValues>({ resolver: zodResolver(loginSchema) });
+
+  const {
+    register: registerDevLogin,
+    handleSubmit: handleSubmitDevLogin,
+    formState: { errors: devLoginErrors, isSubmitting: isDevLoggingIn },
+  } = useForm<DevLoginValues>({ resolver: zodResolver(devLoginSchema) });
 
   const {
     register: registerAddAdmin,
@@ -122,6 +135,22 @@ const Admin = () => {
     toast.error(error.message);
   };
 
+  const onDevLogin = async (values: DevLoginValues) => {
+    const { data, error } = await supabase.rpc("dev_get_dashboard", {
+      p_password: values.password,
+    });
+
+    if (error) {
+      toast.error("Wrong dev password.");
+      return;
+    }
+
+    const result = data as { pledges: Pledge[]; summary: Summary };
+    setPledges(result.pledges || []);
+    setSummary(result.summary || null);
+    setDevAuthorized(true);
+  };
+
   const onAddAdmin = async (values: AddAdminValues) => {
     const email = values.email.trim().toLowerCase();
     const { error } = await supabase.from("admin_allowlist").insert({ email });
@@ -144,6 +173,7 @@ const Admin = () => {
   const handleSignOut = async () => {
     await supabase.auth.signOut();
     setSession(null);
+    setDevAuthorized(false);
     setPledges([]);
     setSummary(null);
     setAdmins([]);
@@ -153,7 +183,7 @@ const Admin = () => {
     return null;
   }
 
-  if (!session) {
+  if (!session && !devAuthorized) {
     return (
       <div className="flex min-h-screen items-center justify-center px-4">
         <Card className="w-full max-w-sm">
@@ -182,6 +212,48 @@ const Admin = () => {
                 </Button>
               </form>
             )}
+
+            <div className="mt-4 border-t pt-4">
+              <button
+                type="button"
+                onClick={() => setShowDevLogin((v) => !v)}
+                className="text-xs text-muted-foreground underline"
+              >
+                {showDevLogin ? "Hide dev login" : "Use dev password instead"}
+              </button>
+
+              {showDevLogin && (
+                <form
+                  onSubmit={handleSubmitDevLogin(onDevLogin)}
+                  className="mt-3 space-y-3"
+                >
+                  <div className="space-y-2">
+                    <Label htmlFor="dev-password">Dev password</Label>
+                    <Input
+                      id="dev-password"
+                      type="password"
+                      {...registerDevLogin("password")}
+                    />
+                    {devLoginErrors.password && (
+                      <p className="text-sm text-destructive">
+                        {devLoginErrors.password.message}
+                      </p>
+                    )}
+                  </div>
+                  <Button
+                    type="submit"
+                    variant="outline"
+                    className="w-full"
+                    disabled={isDevLoggingIn}
+                  >
+                    {isDevLoggingIn ? "Checking…" : "Dev login"}
+                  </Button>
+                  <p className="text-xs text-muted-foreground">
+                    Read-only. Can't add admins from here.
+                  </p>
+                </form>
+              )}
+            </div>
           </CardContent>
         </Card>
       </div>
@@ -191,7 +263,14 @@ const Admin = () => {
   return (
     <div className="mx-auto max-w-4xl px-4 py-12">
       <div className="mb-6 flex items-center justify-between">
-        <h1 className="text-2xl font-bold">Pledge Campaign Dashboard</h1>
+        <h1 className="text-2xl font-bold">
+          Pledge Campaign Dashboard
+          {devAuthorized && (
+            <span className="ml-2 rounded bg-yellow-100 px-2 py-1 text-xs font-normal text-yellow-800">
+              Dev mode
+            </span>
+          )}
+        </h1>
         <Button variant="outline" onClick={handleSignOut}>
           Sign out
         </Button>
@@ -258,42 +337,46 @@ const Admin = () => {
         </div>
       )}
 
-      <h2 className="mt-10 mb-4 text-lg font-semibold">Admin Access</h2>
-      <Card>
-        <CardContent className="space-y-4 pt-6">
-          <div>
-            <p className="mb-2 text-sm text-muted-foreground">
-              Currently allowed to log in:
-            </p>
-            <ul className="space-y-1 text-sm">
-              {admins.map((email) => (
-                <li key={email}>{email}</li>
-              ))}
-            </ul>
-          </div>
+      {!devAuthorized && (
+        <>
+          <h2 className="mt-10 mb-4 text-lg font-semibold">Admin Access</h2>
+          <Card>
+            <CardContent className="space-y-4 pt-6">
+              <div>
+                <p className="mb-2 text-sm text-muted-foreground">
+                  Currently allowed to log in:
+                </p>
+                <ul className="space-y-1 text-sm">
+                  {admins.map((email) => (
+                    <li key={email}>{email}</li>
+                  ))}
+                </ul>
+              </div>
 
-          <form
-            onSubmit={handleSubmitAddAdmin(onAddAdmin)}
-            className="flex items-end gap-2"
-          >
-            <div className="flex-1 space-y-2">
-              <Label htmlFor="new-admin-email">Add an admin</Label>
-              <Input
-                id="new-admin-email"
-                type="email"
-                placeholder="newadmin@example.com"
-                {...registerAddAdmin("email")}
-              />
-              {addAdminErrors.email && (
-                <p className="text-sm text-destructive">{addAdminErrors.email.message}</p>
-              )}
-            </div>
-            <Button type="submit" disabled={isAddingAdmin}>
-              {isAddingAdmin ? "Adding…" : "Add"}
-            </Button>
-          </form>
-        </CardContent>
-      </Card>
+              <form
+                onSubmit={handleSubmitAddAdmin(onAddAdmin)}
+                className="flex items-end gap-2"
+              >
+                <div className="flex-1 space-y-2">
+                  <Label htmlFor="new-admin-email">Add an admin</Label>
+                  <Input
+                    id="new-admin-email"
+                    type="email"
+                    placeholder="newadmin@example.com"
+                    {...registerAddAdmin("email")}
+                  />
+                  {addAdminErrors.email && (
+                    <p className="text-sm text-destructive">{addAdminErrors.email.message}</p>
+                  )}
+                </div>
+                <Button type="submit" disabled={isAddingAdmin}>
+                  {isAddingAdmin ? "Adding…" : "Add"}
+                </Button>
+              </form>
+            </CardContent>
+          </Card>
+        </>
+      )}
     </div>
   );
 };
