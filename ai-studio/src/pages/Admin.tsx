@@ -210,19 +210,19 @@ const Admin = () => {
       .select(PLEDGE_COLUMNS)
       .is("cancelled_at", null)
       .order("created_at", { ascending: false })
-      .then(({ data }) => setPledges((data as Pledge[]) || []));
+      .then(({ data }) => setPledges((data as unknown as Pledge[]) || []));
 
     supabase
       .from("pledge_summary")
       .select("*")
       .single()
-      .then(({ data }) => setSummary(data));
+      .then(({ data }) => setSummary(data as unknown as Summary));
 
     supabase
       .from("admin_allowlist")
       .select("email")
       .order("email", { ascending: true })
-      .then(({ data }) => setAdmins((data || []).map((row) => row.email)));
+      .then(({ data }) => setAdmins(((data as unknown as { email: string }[]) || []).map((row) => row.email)));
   };
 
   useEffect(() => {
@@ -255,7 +255,7 @@ const Admin = () => {
       return false;
     }
 
-    const result = data as { pledges: Pledge[]; summary: Summary; admins: string[] };
+    const result = data as unknown as { pledges: Pledge[]; summary: Summary; admins: string[] };
     setPledges(result.pledges || []);
     setSummary(result.summary || null);
     setAdmins(result.admins || []);
@@ -488,7 +488,7 @@ const Admin = () => {
         <Card>
           <CardContent className="pt-6">
             <p className="text-sm text-muted-foreground">
-              Church Match (capped at $100k)
+              Church Match
             </p>
             <p className="mt-1 text-2xl font-bold">
               {formatCurrency(summary?.church_match ?? 0)}
