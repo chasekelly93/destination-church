@@ -15,6 +15,14 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { supabase } from "@/lib/supabase";
 
 const loginSchema = z.object({
@@ -36,8 +44,18 @@ type Pledge = {
   full_name: string;
   email: string;
   phone: string;
-  amount: number;
+  amount: number | null;
   created_at: string;
+  street_address: string | null;
+  city: string | null;
+  state: string | null;
+  zip: string | null;
+  fulfillment_method: "monthly" | "one_time" | "other" | null;
+  fulfillment_date: string | null;
+  fulfillment_other_detail: string | null;
+  includes_non_cash_gift: boolean;
+  non_cash_gift_detail: string | null;
+  has_questions: boolean;
 };
 
 type Summary = {
@@ -46,11 +64,95 @@ type Summary = {
   total_with_match: number;
 };
 
-function formatCurrency(value: number) {
+const PLEDGE_COLUMNS =
+  "full_name, email, phone, amount, created_at, street_address, city, state, zip, " +
+  "fulfillment_method, fulfillment_date, fulfillment_other_detail, " +
+  "includes_non_cash_gift, non_cash_gift_detail, has_questions";
+
+function formatCurrency(value: number | null) {
+  if (value === null) return "—";
   return new Intl.NumberFormat("en-US", {
     style: "currency",
     currency: "USD",
-  }).format(value || 0);
+  }).format(value);
+}
+
+function formatAddress(p: Pledge) {
+  const cityStateZip = [p.city, p.state].filter(Boolean).join(", ") + (p.zip ? ` ${p.zip}` : "");
+  const parts = [p.street_address, cityStateZip.trim()].filter((part) => part && part.length > 0);
+  return parts.length ? parts.join(" · ") : "—";
+}
+
+function formatFulfillment(p: Pledge) {
+  if (p.has_questions) return "Has questions — no plan yet";
+  if (p.fulfillment_method === "monthly") return "Equal monthly amounts over 4 months";
+  if (p.fulfillment_method === "one_time") {
+    return `One-time gift${p.fulfillment_date ? ` on ${p.fulfillment_date}` : ""}`;
+  }
+  if (p.fulfillment_method === "other") return p.fulfillment_other_detail || "Other";
+  return "—";
+}
+
+function csvEscape(value: string | number | boolean | null) {
+  if (value === null || value === undefined) return "";
+  const str = String(value);
+  if (/[",\n]/.test(str)) {
+    return `"${str.replace(/"/g, '""')}"`;
+  }
+  return str;
+}
+
+function downloadPledgesCsv(pledges: Pledge[]) {
+  const headers = [
+    "Full Name",
+    "Email",
+    "Phone",
+    "Street Address",
+    "City",
+    "State",
+    "Zip",
+    "Amount",
+    "Fulfillment Method",
+    "Fulfillment Date",
+    "Fulfillment Other Detail",
+    "Includes Non-Cash Gift",
+    "Non-Cash Gift Detail",
+    "Has Questions",
+    "Created At",
+  ];
+
+  const rows = pledges.map((p) =>
+    [
+      p.full_name,
+      p.email,
+      p.phone,
+      p.street_address,
+      p.city,
+      p.state,
+      p.zip,
+      p.amount,
+      p.fulfillment_method,
+      p.fulfillment_date,
+      p.fulfillment_other_detail,
+      p.includes_non_cash_gift,
+      p.non_cash_gift_detail,
+      p.has_questions,
+      p.created_at,
+    ]
+      .map(csvEscape)
+      .join(","),
+  );
+
+  const csv = [headers.join(","), ...rows].join("\n");
+  const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = `pledges-${new Date().toISOString().slice(0, 10)}.csv`;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(url);
 }
 
 const Admin = () => {
@@ -65,6 +167,9 @@ const Admin = () => {
   const [devPassword, setDevPassword] = useState<string | null>(null);
   const [cancellingEmail, setCancellingEmail] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
+  const [detailsPledge, setDetailsPledge] = useState<Pledge | null>(null);
+  const [pledgeToDelete, setPledgeToDelete] = useState<Pledge | null>(null);
+  const [deleteConfirmText, setDeleteConfirmText] = useState("");
 
   const {
     register,
@@ -101,10 +206,10 @@ const Admin = () => {
   const loadRealDashboard = () => {
     supabase
       .from("pledges")
-      .select("full_name, email, phone, amount, created_at")
+      .select(PLEDGE_COLUMNS)
       .is("cancelled_at", null)
       .order("created_at", { ascending: false })
-      .then(({ data }) => setPledges(data || []));
+      .then(({ data }) => setPledges((data as Pledge[]) || []));
 
     supabase
       .from("pledge_summary")
@@ -220,6 +325,13 @@ const Admin = () => {
     }
   };
 
+  const handleConfirmDelete = async () => {
+    if (!pledgeToDelete) return;
+    await onCancelPledge(pledgeToDelete.email);
+    setPledgeToDelete(null);
+    setDeleteConfirmText("");
+  };
+
   const handleRefresh = async () => {
     setRefreshing(true);
     if (devAuthorized && devPassword) {
@@ -324,9 +436,11 @@ const Admin = () => {
     );
   }
 
+  const deleteConfirmed = deleteConfirmText.trim().toLowerCase() === "delete";
+
   return (
-    <div className="mx-auto max-w-4xl px-4 py-12">
-      <div className="mb-6 flex items-center justify-between">
+    <div className="mx-auto max-w-5xl px-4 py-12">
+      <div className="mb-6 flex flex-wrap items-center justify-between gap-2">
         <h1 className="text-2xl font-bold">
           Pledge Campaign Dashboard
           {devAuthorized && (
@@ -335,9 +449,16 @@ const Admin = () => {
             </span>
           )}
         </h1>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           <Button variant="outline" asChild>
             <Link to="/">New Pledge</Link>
+          </Button>
+          <Button
+            variant="outline"
+            onClick={() => downloadPledgesCsv(pledges)}
+            disabled={pledges.length === 0}
+          >
+            Export CSV
           </Button>
           <Button variant="outline" onClick={handleRefresh} disabled={refreshing}>
             {refreshing ? "Refreshing…" : "Refresh"}
@@ -390,6 +511,7 @@ const Admin = () => {
                 <th className="px-4 py-2">Phone</th>
                 <th className="px-4 py-2">Pledged</th>
                 <th className="px-4 py-2">Date</th>
+                <th className="px-4 py-2">Flags</th>
                 <th className="px-4 py-2"></th>
               </tr>
             </thead>
@@ -399,18 +521,41 @@ const Admin = () => {
                   <td className="px-4 py-2">{pledge.full_name}</td>
                   <td className="px-4 py-2">{pledge.email}</td>
                   <td className="px-4 py-2">{pledge.phone}</td>
-                  <td className="px-4 py-2">{formatCurrency(Number(pledge.amount))}</td>
+                  <td className="px-4 py-2">{formatCurrency(pledge.amount)}</td>
                   <td className="px-4 py-2">
                     {new Date(pledge.created_at).toLocaleDateString()}
                   </td>
-                  <td className="px-4 py-2 text-right">
+                  <td className="px-4 py-2">
+                    <div className="flex flex-wrap gap-1">
+                      {pledge.has_questions && (
+                        <span className="rounded bg-amber-100 px-2 py-0.5 text-xs text-amber-800">
+                          Questions
+                        </span>
+                      )}
+                      {pledge.includes_non_cash_gift && (
+                        <span className="rounded bg-blue-100 px-2 py-0.5 text-xs text-blue-800">
+                          Non-cash
+                        </span>
+                      )}
+                    </div>
+                  </td>
+                  <td className="px-4 py-2 text-right whitespace-nowrap">
                     <button
                       type="button"
-                      onClick={() => onCancelPledge(pledge.email)}
-                      disabled={cancellingEmail === pledge.email}
-                      className="text-xs text-destructive underline disabled:opacity-50"
+                      onClick={() => setDetailsPledge(pledge)}
+                      className="mr-3 text-xs text-muted-foreground underline"
                     >
-                      {cancellingEmail === pledge.email ? "Removing…" : "Remove"}
+                      Details
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setPledgeToDelete(pledge);
+                        setDeleteConfirmText("");
+                      }}
+                      className="text-xs text-destructive underline"
+                    >
+                      Remove
                     </button>
                   </td>
                 </tr>
@@ -456,6 +601,90 @@ const Admin = () => {
           </form>
         </CardContent>
       </Card>
+
+      <Dialog open={!!detailsPledge} onOpenChange={(open) => !open && setDetailsPledge(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{detailsPledge?.full_name}</DialogTitle>
+            <DialogDescription>{detailsPledge?.email}</DialogDescription>
+          </DialogHeader>
+          {detailsPledge && (
+            <div className="space-y-3 text-sm">
+              <div>
+                <p className="text-muted-foreground">Address</p>
+                <p>{formatAddress(detailsPledge)}</p>
+              </div>
+              <div>
+                <p className="text-muted-foreground">Fulfillment plan</p>
+                <p>{formatFulfillment(detailsPledge)}</p>
+              </div>
+              <div>
+                <p className="text-muted-foreground">Non-cash gift</p>
+                <p>
+                  {detailsPledge.includes_non_cash_gift
+                    ? detailsPledge.non_cash_gift_detail || "Yes, no detail given"
+                    : "No"}
+                </p>
+              </div>
+              <div>
+                <p className="text-muted-foreground">Has questions</p>
+                <p>{detailsPledge.has_questions ? "Yes — needs follow-up" : "No"}</p>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={!!pledgeToDelete}
+        onOpenChange={(open) => {
+          if (!open) {
+            setPledgeToDelete(null);
+            setDeleteConfirmText("");
+          }
+        }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Remove pledge?</DialogTitle>
+            <DialogDescription>
+              This removes {pledgeToDelete?.full_name}'s pledge ({pledgeToDelete?.email})
+              from the dashboard and totals. The record itself is kept, not deleted.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-2">
+            <Label htmlFor="delete-confirm">Type "delete" to confirm</Label>
+            <Input
+              id="delete-confirm"
+              value={deleteConfirmText}
+              onChange={(e) => setDeleteConfirmText(e.target.value)}
+              autoComplete="off"
+            />
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setPledgeToDelete(null);
+                setDeleteConfirmText("");
+              }}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleConfirmDelete}
+              disabled={!deleteConfirmed || cancellingEmail === pledgeToDelete?.email}
+              className={
+                deleteConfirmed
+                  ? "bg-green-600 text-white hover:bg-green-700"
+                  : "bg-red-200 text-red-900 hover:bg-red-200 cursor-not-allowed"
+              }
+            >
+              {cancellingEmail === pledgeToDelete?.email ? "Removing…" : "Delete"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
