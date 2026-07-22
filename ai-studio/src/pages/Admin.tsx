@@ -61,6 +61,7 @@ type Pledge = {
 type Summary = {
   pledge_count: number;
   individual_total: number;
+  church_match: number;
   total_with_match: number;
 };
 
@@ -469,7 +470,7 @@ const Admin = () => {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <Card>
           <CardContent className="pt-6">
             <p className="text-sm text-muted-foreground">Pledges</p>
@@ -481,6 +482,16 @@ const Admin = () => {
             <p className="text-sm text-muted-foreground">Individual Total</p>
             <p className="mt-1 text-2xl font-bold">
               {formatCurrency(summary?.individual_total ?? 0)}
+            </p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="pt-6">
+            <p className="text-sm text-muted-foreground">
+              Church Match (capped at $100k)
+            </p>
+            <p className="mt-1 text-2xl font-bold">
+              {formatCurrency(summary?.church_match ?? 0)}
             </p>
           </CardContent>
         </Card>
