@@ -447,16 +447,16 @@ const Admin = () => {
         <BreakoutHeader subtitle="ADMIN PORTAL" />
       </div>
 
-      <div className="mb-6 flex flex-wrap items-center justify-between gap-2">
-        <h1 className="text-2xl font-bold">
-          Pledge Campaign Dashboard
+      <div className="mb-6 space-y-3">
+        <div className="flex flex-wrap items-center gap-2">
+          <h1 className="text-xl font-bold sm:text-2xl">Pledge Campaign Dashboard</h1>
           {devAuthorized && (
-            <span className="ml-2 rounded bg-yellow-100 px-2 py-1 text-xs font-normal text-yellow-800">
+            <span className="whitespace-nowrap rounded bg-yellow-100 px-2 py-1 text-xs font-normal text-yellow-800">
               Dev mode
             </span>
           )}
-        </h1>
-        <div className="flex flex-wrap gap-2">
+        </div>
+        <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap">
           <Button variant="outline" asChild>
             <Link to="/">New Pledge</Link>
           </Button>
@@ -519,67 +519,124 @@ const Admin = () => {
           has been added to <code>admin_allowlist</code>.
         </p>
       ) : (
-        <div className="overflow-x-auto rounded-lg border">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b text-left text-muted-foreground">
-                <th className="px-4 py-2">Name</th>
-                <th className="px-4 py-2">Email</th>
-                <th className="px-4 py-2">Phone</th>
-                <th className="px-4 py-2">Pledged</th>
-                <th className="px-4 py-2">Date</th>
-                <th className="px-4 py-2">Flags</th>
-                <th className="px-4 py-2"></th>
-              </tr>
-            </thead>
-            <tbody>
-              {pledges.map((pledge) => (
-                <tr key={pledge.email} className="border-b last:border-0">
-                  <td className="px-4 py-2">{pledge.full_name}</td>
-                  <td className="px-4 py-2">{pledge.email}</td>
-                  <td className="px-4 py-2">{pledge.phone}</td>
-                  <td className="px-4 py-2">{formatCurrency(pledge.amount)}</td>
-                  <td className="px-4 py-2">
+        <>
+          {/* Mobile: stacked cards */}
+          <div className="space-y-3 sm:hidden">
+            {pledges.map((pledge) => (
+              <div key={pledge.email} className="rounded-lg border bg-card p-4">
+                <div className="flex items-start justify-between gap-2">
+                  <div>
+                    <p className="font-medium">{pledge.full_name}</p>
+                    <p className="text-xs text-muted-foreground">{pledge.email}</p>
+                    <p className="text-xs text-muted-foreground">{pledge.phone}</p>
+                  </div>
+                  <p className="text-right font-semibold whitespace-nowrap">
+                    {formatCurrency(pledge.amount)}
+                  </p>
+                </div>
+
+                <div className="mt-2 flex flex-wrap items-center gap-1">
+                  <span className="text-xs text-muted-foreground">
                     {new Date(pledge.created_at).toLocaleDateString()}
-                  </td>
-                  <td className="px-4 py-2">
-                    <div className="flex flex-wrap gap-1">
-                      {pledge.has_questions && (
-                        <span className="rounded bg-amber-100 px-2 py-0.5 text-xs text-amber-800">
-                          Questions
-                        </span>
-                      )}
-                      {pledge.includes_non_cash_gift && (
-                        <span className="rounded bg-blue-100 px-2 py-0.5 text-xs text-blue-800">
-                          Non-cash
-                        </span>
-                      )}
-                    </div>
-                  </td>
-                  <td className="px-4 py-2 text-right whitespace-nowrap">
-                    <button
-                      type="button"
-                      onClick={() => setDetailsPledge(pledge)}
-                      className="mr-3 text-xs text-muted-foreground underline"
-                    >
-                      Details
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setPledgeToDelete(pledge);
-                        setDeleteConfirmText("");
-                      }}
-                      className="text-xs text-destructive underline"
-                    >
-                      Remove
-                    </button>
-                  </td>
+                  </span>
+                  {pledge.has_questions && (
+                    <span className="rounded bg-amber-100 px-2 py-0.5 text-xs text-amber-800">
+                      Questions
+                    </span>
+                  )}
+                  {pledge.includes_non_cash_gift && (
+                    <span className="rounded bg-blue-100 px-2 py-0.5 text-xs text-blue-800">
+                      Non-cash
+                    </span>
+                  )}
+                </div>
+
+                <div className="mt-3 flex gap-4 border-t pt-2">
+                  <button
+                    type="button"
+                    onClick={() => setDetailsPledge(pledge)}
+                    className="text-xs text-muted-foreground underline"
+                  >
+                    Details
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setPledgeToDelete(pledge);
+                      setDeleteConfirmText("");
+                    }}
+                    className="text-xs text-destructive underline"
+                  >
+                    Remove
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* Desktop/tablet: table */}
+          <div className="hidden overflow-x-auto rounded-lg border sm:block">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b text-left text-muted-foreground">
+                  <th className="px-4 py-2">Name</th>
+                  <th className="px-4 py-2">Email</th>
+                  <th className="px-4 py-2">Phone</th>
+                  <th className="px-4 py-2">Pledged</th>
+                  <th className="px-4 py-2">Date</th>
+                  <th className="px-4 py-2">Flags</th>
+                  <th className="px-4 py-2"></th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+              </thead>
+              <tbody>
+                {pledges.map((pledge) => (
+                  <tr key={pledge.email} className="border-b last:border-0">
+                    <td className="px-4 py-2">{pledge.full_name}</td>
+                    <td className="px-4 py-2">{pledge.email}</td>
+                    <td className="px-4 py-2">{pledge.phone}</td>
+                    <td className="px-4 py-2">{formatCurrency(pledge.amount)}</td>
+                    <td className="px-4 py-2">
+                      {new Date(pledge.created_at).toLocaleDateString()}
+                    </td>
+                    <td className="px-4 py-2">
+                      <div className="flex flex-wrap gap-1">
+                        {pledge.has_questions && (
+                          <span className="rounded bg-amber-100 px-2 py-0.5 text-xs text-amber-800">
+                            Questions
+                          </span>
+                        )}
+                        {pledge.includes_non_cash_gift && (
+                          <span className="rounded bg-blue-100 px-2 py-0.5 text-xs text-blue-800">
+                            Non-cash
+                          </span>
+                        )}
+                      </div>
+                    </td>
+                    <td className="px-4 py-2 text-right whitespace-nowrap">
+                      <button
+                        type="button"
+                        onClick={() => setDetailsPledge(pledge)}
+                        className="mr-3 text-xs text-muted-foreground underline"
+                      >
+                        Details
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setPledgeToDelete(pledge);
+                          setDeleteConfirmText("");
+                        }}
+                        className="text-xs text-destructive underline"
+                      >
+                        Remove
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </>
       )}
 
       <h2 className="mt-10 mb-4 text-lg font-semibold">Admin Access</h2>
