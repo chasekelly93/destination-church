@@ -61,6 +61,8 @@ const Admin = () => {
   const [admins, setAdmins] = useState<string[]>([]);
   const [showDevLogin, setShowDevLogin] = useState(false);
   const [devAuthorized, setDevAuthorized] = useState(false);
+  const [devPassword, setDevPassword] = useState<string | null>(null);
+  const [cancellingEmail, setCancellingEmail] = useState<string | null>(null);
 
   const {
     register,
@@ -94,20 +96,11 @@ const Admin = () => {
     return () => listener.subscription.unsubscribe();
   }, []);
 
-  const loadAdmins = () => {
-    supabase
-      .from("admin_allowlist")
-      .select("email")
-      .order("email", { ascending: true })
-      .then(({ data }) => setAdmins((data || []).map((row) => row.email)));
-  };
-
-  useEffect(() => {
-    if (!session) return;
-
+  const loadRealDashboard = () => {
     supabase
       .from("pledges")
       .select("full_name, email, phone, amount, created_at")
+      .is("cancelled_at", null)
       .order("created_at", { ascending: false })
       .then(({ data }) => setPledges(data || []));
 
@@ -117,7 +110,16 @@ const Admin = () => {
       .single()
       .then(({ data }) => setSummary(data));
 
-    loadAdmins();
+    supabase
+      .from("admin_allowlist")
+      .select("email")
+      .order("email", { ascending: true })
+      .then(({ data }) => setAdmins((data || []).map((row) => row.email)));
+  };
+
+  useEffect(() => {
+    if (!session) return;
+    loadRealDashboard();
   }, [session]);
 
   const onLogin = async (values: LoginValues) => {
@@ -135,30 +137,55 @@ const Admin = () => {
     toast.error(error.message);
   };
 
-  const onDevLogin = async (values: DevLoginValues) => {
+  const loadDevDashboard = async (password: string) => {
     const { data, error } = await supabase.rpc("dev_get_dashboard", {
-      p_password: values.password,
+      p_password: password,
     });
 
     if (error) {
       toast.error("Wrong dev password.");
-      return;
+      return false;
     }
 
-    const result = data as { pledges: Pledge[]; summary: Summary };
+    const result = data as { pledges: Pledge[]; summary: Summary; admins: string[] };
     setPledges(result.pledges || []);
     setSummary(result.summary || null);
-    setDevAuthorized(true);
+    setAdmins(result.admins || []);
+    return true;
+  };
+
+  const onDevLogin = async (values: DevLoginValues) => {
+    const ok = await loadDevDashboard(values.password);
+    if (ok) {
+      setDevPassword(values.password);
+      setDevAuthorized(true);
+    }
   };
 
   const onAddAdmin = async (values: AddAdminValues) => {
     const email = values.email.trim().toLowerCase();
+
+    if (devAuthorized && devPassword) {
+      const { error } = await supabase.rpc("dev_add_admin", {
+        p_password: devPassword,
+        p_email: email,
+      });
+      if (error) {
+        toast.error(error.message);
+        return;
+      }
+      toast.success(`${email} can now log into this dashboard.`);
+      resetAddAdmin();
+      loadDevDashboard(devPassword);
+      return;
+    }
+
     const { error } = await supabase.from("admin_allowlist").insert({ email });
 
     if (!error) {
       toast.success(`${email} can now log into this dashboard.`);
       resetAddAdmin();
-      loadAdmins();
+      loadRealDashboard();
       return;
     }
 
@@ -170,10 +197,32 @@ const Admin = () => {
     toast.error(error.message);
   };
 
+  const onCancelPledge = async (email: string) => {
+    setCancellingEmail(email);
+    const { error } = await supabase.rpc("cancel_pledge", {
+      p_email: email,
+      p_dev_password: devAuthorized ? devPassword : null,
+    });
+    setCancellingEmail(null);
+
+    if (error) {
+      toast.error(error.message);
+      return;
+    }
+
+    toast.success(`Removed ${email}'s pledge.`);
+    if (devAuthorized && devPassword) {
+      loadDevDashboard(devPassword);
+    } else {
+      loadRealDashboard();
+    }
+  };
+
   const handleSignOut = async () => {
     await supabase.auth.signOut();
     setSession(null);
     setDevAuthorized(false);
+    setDevPassword(null);
     setPledges([]);
     setSummary(null);
     setAdmins([]);
@@ -248,9 +297,6 @@ const Admin = () => {
                   >
                     {isDevLoggingIn ? "Checking…" : "Dev login"}
                   </Button>
-                  <p className="text-xs text-muted-foreground">
-                    Read-only. Can't add admins from here.
-                  </p>
                 </form>
               )}
             </div>
@@ -318,6 +364,7 @@ const Admin = () => {
                 <th className="px-4 py-2">Phone</th>
                 <th className="px-4 py-2">Pledged</th>
                 <th className="px-4 py-2">Date</th>
+                <th className="px-4 py-2"></th>
               </tr>
             </thead>
             <tbody>
@@ -330,6 +377,16 @@ const Admin = () => {
                   <td className="px-4 py-2">
                     {new Date(pledge.created_at).toLocaleDateString()}
                   </td>
+                  <td className="px-4 py-2 text-right">
+                    <button
+                      type="button"
+                      onClick={() => onCancelPledge(pledge.email)}
+                      disabled={cancellingEmail === pledge.email}
+                      className="text-xs text-destructive underline disabled:opacity-50"
+                    >
+                      {cancellingEmail === pledge.email ? "Removing…" : "Remove"}
+                    </button>
+                  </td>
                 </tr>
               ))}
             </tbody>
@@ -337,46 +394,42 @@ const Admin = () => {
         </div>
       )}
 
-      {!devAuthorized && (
-        <>
-          <h2 className="mt-10 mb-4 text-lg font-semibold">Admin Access</h2>
-          <Card>
-            <CardContent className="space-y-4 pt-6">
-              <div>
-                <p className="mb-2 text-sm text-muted-foreground">
-                  Currently allowed to log in:
-                </p>
-                <ul className="space-y-1 text-sm">
-                  {admins.map((email) => (
-                    <li key={email}>{email}</li>
-                  ))}
-                </ul>
-              </div>
+      <h2 className="mt-10 mb-4 text-lg font-semibold">Admin Access</h2>
+      <Card>
+        <CardContent className="space-y-4 pt-6">
+          <div>
+            <p className="mb-2 text-sm text-muted-foreground">
+              Currently allowed to log in:
+            </p>
+            <ul className="space-y-1 text-sm">
+              {admins.map((email) => (
+                <li key={email}>{email}</li>
+              ))}
+            </ul>
+          </div>
 
-              <form
-                onSubmit={handleSubmitAddAdmin(onAddAdmin)}
-                className="flex items-end gap-2"
-              >
-                <div className="flex-1 space-y-2">
-                  <Label htmlFor="new-admin-email">Add an admin</Label>
-                  <Input
-                    id="new-admin-email"
-                    type="email"
-                    placeholder="newadmin@example.com"
-                    {...registerAddAdmin("email")}
-                  />
-                  {addAdminErrors.email && (
-                    <p className="text-sm text-destructive">{addAdminErrors.email.message}</p>
-                  )}
-                </div>
-                <Button type="submit" disabled={isAddingAdmin}>
-                  {isAddingAdmin ? "Adding…" : "Add"}
-                </Button>
-              </form>
-            </CardContent>
-          </Card>
-        </>
-      )}
+          <form
+            onSubmit={handleSubmitAddAdmin(onAddAdmin)}
+            className="flex items-end gap-2"
+          >
+            <div className="flex-1 space-y-2">
+              <Label htmlFor="new-admin-email">Add an admin</Label>
+              <Input
+                id="new-admin-email"
+                type="email"
+                placeholder="newadmin@example.com"
+                {...registerAddAdmin("email")}
+              />
+              {addAdminErrors.email && (
+                <p className="text-sm text-destructive">{addAdminErrors.email.message}</p>
+              )}
+            </div>
+            <Button type="submit" disabled={isAddingAdmin}>
+              {isAddingAdmin ? "Adding…" : "Add"}
+            </Button>
+          </form>
+        </CardContent>
+      </Card>
     </div>
   );
 };
