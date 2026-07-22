@@ -3,6 +3,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { toast } from "sonner";
+import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -14,6 +15,19 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { supabase } from "@/lib/supabase";
+
+function AdminPortalLink() {
+  return (
+    <div className="mt-8 text-center">
+      <Link
+        to="/admin"
+        className="text-xs text-muted-foreground underline underline-offset-2"
+      >
+        Admin Portal
+      </Link>
+    </div>
+  );
+}
 
 const pledgeSchema = z.object({
   full_name: z.string().min(1, "Full name is required"),
@@ -61,20 +75,21 @@ const Index = () => {
 
   if (submitState === "success") {
     return (
-      <div className="flex min-h-screen items-center justify-center px-4">
+      <div className="flex min-h-screen flex-col items-center justify-center px-4">
         <div className="max-w-md text-center">
           <h1 className="mb-2 text-3xl font-bold">Thank you for your pledge!</h1>
           <p className="text-muted-foreground">
             We've recorded your commitment to the campaign. You'll hear from us soon.
           </p>
         </div>
+        <AdminPortalLink />
       </div>
     );
   }
 
   if (submitState === "duplicate") {
     return (
-      <div className="flex min-h-screen items-center justify-center px-4">
+      <div className="flex min-h-screen flex-col items-center justify-center px-4">
         <div className="max-w-md text-center">
           <h1 className="mb-2 text-3xl font-bold">You've already pledged</h1>
           <p className="text-muted-foreground">
@@ -82,12 +97,13 @@ const Index = () => {
             one-time — reach out to us directly if you need to make a change.
           </p>
         </div>
+        <AdminPortalLink />
       </div>
     );
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center px-4 py-12">
+    <div className="flex min-h-screen flex-col items-center justify-center px-4 py-12">
       <Card className="w-full max-w-md">
         <CardHeader>
           <CardTitle>Make Your Pledge</CardTitle>
@@ -140,6 +156,7 @@ const Index = () => {
           </form>
         </CardContent>
       </Card>
+      <AdminPortalLink />
     </div>
   );
 };
