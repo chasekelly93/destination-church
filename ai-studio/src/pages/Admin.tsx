@@ -3,6 +3,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { toast } from "sonner";
+import { Link } from "react-router-dom";
 import type { Session } from "@supabase/supabase-js";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -311,6 +312,12 @@ const Admin = () => {
                 </form>
               )}
             </div>
+
+            <p className="mt-4 text-center">
+              <Link to="/" className="text-xs text-muted-foreground underline underline-offset-2">
+                New Pledge
+              </Link>
+            </p>
           </CardContent>
         </Card>
       </div>
@@ -329,6 +336,9 @@ const Admin = () => {
           )}
         </h1>
         <div className="flex gap-2">
+          <Button variant="outline" asChild>
+            <Link to="/">New Pledge</Link>
+          </Button>
           <Button variant="outline" onClick={handleRefresh} disabled={refreshing}>
             {refreshing ? "Refreshing…" : "Refresh"}
           </Button>
