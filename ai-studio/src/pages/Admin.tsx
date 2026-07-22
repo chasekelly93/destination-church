@@ -23,6 +23,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { BreakoutHeader } from "@/components/BreakoutHeader";
 import { supabase } from "@/lib/supabase";
 
 const loginSchema = z.object({
@@ -360,7 +361,8 @@ const Admin = () => {
   if (!session && !devAuthorized) {
     return (
       <div className="flex min-h-screen items-center justify-center px-4">
-        <Card className="w-full max-w-sm">
+        <Card className="w-full max-w-sm overflow-hidden rounded-lg py-0 shadow-sm">
+          <BreakoutHeader subtitle="ADMIN PORTAL" />
           <CardHeader>
             <CardTitle>Admin Login</CardTitle>
             <CardDescription>
@@ -441,6 +443,10 @@ const Admin = () => {
 
   return (
     <div className="mx-auto max-w-5xl px-4 py-12">
+      <div className="mb-6 overflow-hidden rounded-lg shadow-sm">
+        <BreakoutHeader subtitle="ADMIN PORTAL" />
+      </div>
+
       <div className="mb-6 flex flex-wrap items-center justify-between gap-2">
         <h1 className="text-2xl font-bold">
           Pledge Campaign Dashboard

@@ -1,0 +1,80 @@
+@import url('https://fonts.googleapis.com/css2?family=Anton&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 211 62.3% 89.6%;
+    --foreground: 214 45% 15%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 214 45% 15%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 214 45% 15%;
+
+    --primary: 209 61.4% 56.3%;
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 208 66.9% 72.7%;
+    --secondary-foreground: 214 80.4% 20%;
+
+    --muted: 211 50% 93%;
+    --muted-foreground: 214 20% 40%;
+
+    --accent: 208 66.9% 72.7%;
+    --accent-foreground: 214 80.4% 20%;
+
+    --destructive: 0 62.8% 40%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 211 40% 80%;
+    --input: 211 40% 80%;
+    --ring: 209 61.4% 56.3%;
+
+    --radius: 0.75rem;
+
+    /* Breakout brand token: the deep navy used for the wordmark underline
+       and subtitle on the physical pledge card. */
+    --brand-navy: 214 80.4% 36.1%;
+
+    /* Custom OKLCH Tokens (pre-existing, unused by our pages, left as-is) */
+    --primary-glow: oklch(65% 0.2 260);
+    --accent-glow: oklch(75% 0.15 190);
+    --glass-background: rgba(255, 255, 255, 0.03);
+    --glass-border: rgba(255, 255, 255, 0.1);
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground antialiased;
+    font-family: 'DM Sans', sans-serif;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    font-family: 'Space Grotesk', sans-serif;
+    @apply tracking-tight;
+  }
+}
+
+@layer components {
+  .glass-card {
+    @apply bg-[var(--glass-background)] border border-[var(--glass-border)] backdrop-blur-md;
+  }
+
+  .hero-gradient {
+    background: radial-gradient(circle at 50% 50%, rgba(79, 70, 229, 0.15) 0%, transparent 50%);
+  }
+
+  .brand-wordmark {
+    font-family: 'Anton', sans-serif;
+    letter-spacing: 0.04em;
+  }
+}

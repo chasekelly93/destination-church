@@ -16,6 +16,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { BreakoutHeader } from "@/components/BreakoutHeader";
 import { supabase } from "@/lib/supabase";
 
 function AdminPortalLink() {
@@ -156,12 +157,15 @@ const Index = () => {
 
   if (submitState === "success") {
     return (
-      <div className="flex min-h-screen flex-col items-center justify-center px-4">
-        <div className="max-w-md text-center">
-          <h1 className="mb-2 text-3xl font-bold">Thank you for your pledge!</h1>
-          <p className="text-muted-foreground">
-            We've recorded your commitment to the campaign. You'll hear from us soon.
-          </p>
+      <div className="flex min-h-screen flex-col items-center justify-center px-4 py-12">
+        <div className="w-full max-w-md overflow-hidden rounded-lg shadow-sm">
+          <BreakoutHeader />
+          <div className="rounded-b-lg bg-card p-8 text-center">
+            <h1 className="mb-2 text-3xl font-bold">Thank you for your pledge!</h1>
+            <p className="text-muted-foreground">
+              We've recorded your commitment to the campaign. You'll hear from us soon.
+            </p>
+          </div>
         </div>
         <AdminPortalLink />
       </div>
@@ -170,13 +174,16 @@ const Index = () => {
 
   if (submitState === "duplicate") {
     return (
-      <div className="flex min-h-screen flex-col items-center justify-center px-4">
-        <div className="max-w-md text-center">
-          <h1 className="mb-2 text-3xl font-bold">You've already pledged</h1>
-          <p className="text-muted-foreground">
-            It looks like this email has already submitted a pledge. Pledges are
-            one-time — reach out to us directly if you need to make a change.
-          </p>
+      <div className="flex min-h-screen flex-col items-center justify-center px-4 py-12">
+        <div className="w-full max-w-md overflow-hidden rounded-lg shadow-sm">
+          <BreakoutHeader />
+          <div className="rounded-b-lg bg-card p-8 text-center">
+            <h1 className="mb-2 text-3xl font-bold">You've already pledged</h1>
+            <p className="text-muted-foreground">
+              It looks like this email has already submitted a pledge. Pledges are
+              one-time — reach out to us directly if you need to make a change.
+            </p>
+          </div>
         </div>
         <AdminPortalLink />
       </div>
@@ -185,7 +192,8 @@ const Index = () => {
 
   return (
     <div className="flex min-h-screen flex-col items-center justify-center px-4 py-12">
-      <Card className="w-full max-w-md">
+      <Card className="w-full max-w-md overflow-hidden rounded-lg py-0 shadow-sm">
+        <BreakoutHeader />
         <CardHeader>
           <CardTitle>Make Your Pledge</CardTitle>
           <CardDescription>
