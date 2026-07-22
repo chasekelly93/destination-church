@@ -63,6 +63,7 @@ const Admin = () => {
   const [devAuthorized, setDevAuthorized] = useState(false);
   const [devPassword, setDevPassword] = useState<string | null>(null);
   const [cancellingEmail, setCancellingEmail] = useState<string | null>(null);
+  const [refreshing, setRefreshing] = useState(false);
 
   const {
     register,
@@ -218,6 +219,16 @@ const Admin = () => {
     }
   };
 
+  const handleRefresh = async () => {
+    setRefreshing(true);
+    if (devAuthorized && devPassword) {
+      await loadDevDashboard(devPassword);
+    } else {
+      loadRealDashboard();
+    }
+    setRefreshing(false);
+  };
+
   const handleSignOut = async () => {
     await supabase.auth.signOut();
     setSession(null);
@@ -317,9 +328,14 @@ const Admin = () => {
             </span>
           )}
         </h1>
-        <Button variant="outline" onClick={handleSignOut}>
-          Sign out
-        </Button>
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={handleRefresh} disabled={refreshing}>
+            {refreshing ? "Refreshing…" : "Refresh"}
+          </Button>
+          <Button variant="outline" onClick={handleSignOut}>
+            Sign out
+          </Button>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
