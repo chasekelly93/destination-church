@@ -23,12 +23,30 @@ const Progress = () => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    supabase
-      .rpc("get_public_campaign_totals")
-      .then(({ data }) => {
-        setSummary((data as unknown as Summary) || null);
-        setLoading(false);
-      });
+    const loadTotals = () => {
+      supabase
+        .rpc("get_public_campaign_totals")
+        .then(({ data }) => {
+          setSummary((data as unknown as Summary) || null);
+          setLoading(false);
+        });
+    };
+
+    loadTotals();
+
+    // Instant update the moment a pledge is inserted or cancelled.
+    const channel = supabase
+      .channel("campaign-updates")
+      .on("broadcast", { event: "pledge_updated" }, loadTotals)
+      .subscribe();
+
+    // Fallback in case a broadcast is ever missed (dropped connection, etc.)
+    const interval = setInterval(loadTotals, 30000);
+
+    return () => {
+      supabase.removeChannel(channel);
+      clearInterval(interval);
+    };
   }, []);
 
   return (

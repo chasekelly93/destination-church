@@ -231,6 +231,32 @@ const Admin = () => {
     loadRealDashboard();
   }, [session]);
 
+  useEffect(() => {
+    if (!session && !devAuthorized) return;
+
+    const refreshSilently = () => {
+      if (devAuthorized && devPassword) {
+        loadDevDashboard(devPassword);
+      } else {
+        loadRealDashboard();
+      }
+    };
+
+    // Instant update the moment a pledge is inserted or cancelled.
+    const channel = supabase
+      .channel("campaign-updates")
+      .on("broadcast", { event: "pledge_updated" }, refreshSilently)
+      .subscribe();
+
+    // Fallback in case a broadcast is ever missed (dropped connection, etc.)
+    const interval = setInterval(refreshSilently, 30000);
+
+    return () => {
+      supabase.removeChannel(channel);
+      clearInterval(interval);
+    };
+  }, [session, devAuthorized, devPassword]);
+
   const onLogin = async (values: LoginValues) => {
     setLinkSent(false);
     const { error } = await supabase.auth.signInWithOtp({
