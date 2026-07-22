@@ -17,16 +17,24 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { BreakoutHeader } from "@/components/BreakoutHeader";
+import { CampaignProgressBar } from "@/components/CampaignProgressBar";
 import { supabase } from "@/lib/supabase";
 
-function AdminPortalLink() {
+function PortalLinks() {
   return (
-    <div className="mt-8 text-center">
+    <div className="mt-8 flex items-center justify-center gap-3 text-center">
       <Link
         to="/admin"
         className="text-xs text-muted-foreground underline underline-offset-2"
       >
         Admin Portal
+      </Link>
+      <span className="text-xs text-muted-foreground">·</span>
+      <Link
+        to="/progress"
+        className="text-xs text-muted-foreground underline underline-offset-2"
+      >
+        Progress Portal
       </Link>
     </div>
   );
@@ -167,7 +175,7 @@ const Index = () => {
             </p>
           </div>
         </div>
-        <AdminPortalLink />
+        <PortalLinks />
       </div>
     );
   }
@@ -185,7 +193,7 @@ const Index = () => {
             </p>
           </div>
         </div>
-        <AdminPortalLink />
+        <PortalLinks />
       </div>
     );
   }
@@ -194,6 +202,7 @@ const Index = () => {
     <div className="flex min-h-screen flex-col items-center justify-center px-4 py-12">
       <Card className="w-full max-w-md overflow-hidden rounded-lg py-0 shadow-sm">
         <BreakoutHeader />
+        <CampaignProgressBar />
         <CardHeader>
           <CardTitle>Make Your Pledge</CardTitle>
           <CardDescription>
@@ -376,7 +385,7 @@ const Index = () => {
           </form>
         </CardContent>
       </Card>
-      <AdminPortalLink />
+      <PortalLinks />
     </div>
   );
 };
