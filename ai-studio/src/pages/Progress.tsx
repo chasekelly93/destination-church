@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { Card, CardContent } from "@/components/ui/card";
-import { BreakoutHeader } from "@/components/BreakoutHeader";
+import { BreakoutHeader, LOGO_DATA_URL } from "@/components/BreakoutHeader";
 import { supabase } from "@/lib/supabase";
 
 const GOAL = 200000;
@@ -179,10 +179,19 @@ const Progress = () => {
           boxShadow: justUpdated ? "inset 0 0 200px rgba(255,255,255,0.25)" : "inset 0 0 0 rgba(255,255,255,0)",
         }}
       >
-        <h1 className="brand-wordmark text-7xl xl:text-8xl">BREAKOUT</h1>
-        <p className="brand-wordmark mt-2 text-xl opacity-80 xl:text-2xl">
-          SEPTEMBER - DECEMBER 2026
-        </p>
+        <div className="flex items-center gap-8">
+          <div>
+            <h1 className="brand-wordmark text-7xl xl:text-8xl">BREAKOUT</h1>
+            <p className="brand-wordmark mt-2 text-xl opacity-80 xl:text-2xl">
+              SEPTEMBER - DECEMBER 2026
+            </p>
+          </div>
+          <img
+            src={LOGO_DATA_URL}
+            alt="Destination Church logo"
+            className="h-24 w-auto shrink-0 xl:h-32"
+          />
+        </div>
 
         {loading ? (
           <p className="mt-20 text-2xl opacity-80">Loading…</p>
