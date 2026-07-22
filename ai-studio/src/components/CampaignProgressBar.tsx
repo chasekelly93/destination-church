@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
 
-const GOAL = 100000;
+const GOAL = 200000;
 
 function formatCurrency(value: number) {
   return new Intl.NumberFormat("en-US", {

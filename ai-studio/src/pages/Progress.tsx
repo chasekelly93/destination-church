@@ -67,7 +67,7 @@ const Progress = () => {
               <Card className="border-primary">
                 <CardContent className="pt-6 text-center">
                   <p className="text-sm text-muted-foreground">
-                    Total Toward $100,000 Goal
+                    Total Toward $200,000 Goal
                   </p>
                   <p className="mt-1 text-4xl font-bold">
                     {formatCurrency(summary?.total_with_match)}
